@@ -78,11 +78,13 @@ public class REPLConsole {
 		textArea.setText("Welcome to REPL Console! " + System.lineSeparator() + ">");
 		textArea.setEditable(true);
 		frame.add(textArea, "Center");
-
+		undoManager.discardAllEdits();
 		textArea.getKeymap().addActionForKeyStroke(KeyStroke.getKeyStroke("control Z"), new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				undoManager.undo();
+				if (undoManager.canUndo()) {
+					undoManager.undo();
+				}
 			}
 		});
 
@@ -141,6 +143,7 @@ public class REPLConsole {
 					document.insertString(endOffset(document), System.lineSeparator() + resultToPrint, null);
 					document.insertString(endOffset(document), GREETING, null);
 					source.setCaretPosition(endOffset(document));
+					undoManager.discardAllEdits();
 				} catch (BadLocationException e1) {
 					e1.printStackTrace();
 				}
