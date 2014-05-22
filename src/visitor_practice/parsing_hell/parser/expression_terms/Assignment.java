@@ -16,13 +16,23 @@ import visitor_practice.visitors.ExpressionVisitor;
  */
 
 public class Assignment extends Expression {
-	public final String variable;
+	public final Variable variable;
 	public final Expression expression;
+	public final int signPosition;
 
-	public Assignment(String variable, Expression expression, int start, int length) {
+	public Assignment(
+			Expression variable,
+			Expression expression,
+			int start,
+			int length,
+			int signPosition) {
 		super(start, length);
-		this.variable = variable;
+		this.variable = (Variable) variable;
 		this.expression = expression;
+		this.signPosition = signPosition;
+		setHasBeenValid(variable.getHasBeenInvalid() || expression.getHasBeenInvalid());
+		setValidity(variable.isValid() || variable.isValid());
+		setDepth(Math.max(variable.getDepth(), expression.getDepth()));
 	}
 
 	@Override

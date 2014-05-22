@@ -28,7 +28,19 @@ public class Lexer {
 	}
 
 	public List<Lexeme> getResult() {
-		return state.getResult();
+		return end();
+	}
+
+	private List<Lexeme> end() {
+		List<Lexeme> result = state.getResult();
+		if (result.size() == 0) {
+			result.add(new Lexeme(LexemeType.END, 0, 0));
+		} else {
+			Lexeme last = result.get(result.size() - 1);
+			result.add(new Lexeme(LexemeType.END, last.start + last.length, 0));
+		}
+
+		return result;
 	}
 
 	private LexerState state = new NoState(this);

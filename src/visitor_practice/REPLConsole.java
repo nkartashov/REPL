@@ -1,6 +1,5 @@
 package visitor_practice;
 
-import visitor_practice.parsing_hell.lexer.Lexeme;
 import visitor_practice.parsing_hell.lexer.Lexer;
 import visitor_practice.parsing_hell.parser.Parser;
 import visitor_practice.parsing_hell.parser.expression_terms.Expression;
@@ -28,14 +27,14 @@ public class REPLConsole {
 	public static final String SIMPLIFY = "Simplify";
 	public static final String EVALUATE = "Evaluate";
 	public static final String GREETING = System.lineSeparator() + ">";
+	public static final String FIRST_LINE = "Welcome to REPL Console! " + System.lineSeparator() + ">";
 	private Stack<Map<String, Expression>> contextStack = new Stack<>();
 
-	private Tuple<Expression, Integer> buildAST(String source) {
+	private Expression buildAST(String source) {
 		Lexer lexer = new Lexer();
 		lexer.lex(source);
 		Parser parser = new Parser(lexer.getResult(), source);
-		Expression result = parser.parse();
-		return new Tuple<>(result, parser.getLastParsedSymbol());
+		return parser.parse();
 	}
 
 	private StyledDocument setupStyles() {
@@ -75,7 +74,7 @@ public class REPLConsole {
 		final AbstractDocument document = (AbstractDocument) textArea.getDocument();
 		document.addUndoableEditListener(undoManager);
 		document.setDocumentFilter(new Filter((StyledDocument) document));
-		textArea.setText("Welcome to REPL Console! " + System.lineSeparator() + ">");
+		textArea.setText(FIRST_LINE);
 		textArea.setEditable(true);
 		frame.add(textArea, "Center");
 		undoManager.discardAllEdits();
@@ -84,6 +83,11 @@ public class REPLConsole {
 			public void actionPerformed(ActionEvent e) {
 				if (undoManager.canUndo()) {
 					undoManager.undo();
+					try {
+						((Filter) document.getDocumentFilter()).highlightInput();
+					} catch (BadLocationException e1) {
+						//Ignored
+					}
 				}
 			}
 		});
@@ -126,19 +130,21 @@ public class REPLConsole {
 				try {
 					String text = document.getText(0, document.getLength());
 					String userInput = text.substring(lastLineIndex(document) + GREETING.length());
-					Expression ast = buildAST(userInput).fst;
-					Map<String, Expression> context = getContext();
-					EvaluatorBase visitor = simplifyMode() ? new Simplifier(context) : new Evaluator(context);
-					String resultToPrint = userInput;
-					try {
-						Expression resultExpression = ast.accept(visitor);
-						renewContext(visitor.context);
-						if (resultExpression != null) {
+					Expression ast = buildAST(userInput);
+					String resultToPrint = "ERROR: cannot parse input";
+					if (!ast.getHasBeenInvalid()) {
+						Map<String, Expression> context = getContext();
+						EvaluatorBase visitor = simplifyMode() ? new Simplifier(context) : new Evaluator(context);
+						try {
+							Expression resultExpression = ast.accept(visitor);
+							renewContext(visitor.context);
+
 							PrettyPrinter printer = new PrettyPrinter();
 							resultToPrint = resultExpression.accept(printer);
+
+						} catch (UnsupportedOperationException ex) {
+							resultToPrint = "ERROR: Variable " + ex.getMessage() + " is not in context";
 						}
-					} catch (UnsupportedOperationException ex) {
-						resultToPrint = "ERROR: Variable " + ex.getMessage() + " is not in context";
 					}
 					document.insertString(endOffset(document), System.lineSeparator() + resultToPrint, null);
 					document.insertString(endOffset(document), GREETING, null);
@@ -210,70 +216,33 @@ public class REPLConsole {
 		public void highlightInput() throws BadLocationException {
 			styledDocument.removeUndoableEditListener(undoManager);
 			String inputText = styledDocument.getText(0, styledDocument.getLength());
-			if (inputText.length() == 0) {
+			if (inputText.length() == 0 || inputText.equals(FIRST_LINE)) {
 				return;
 			}
-			if (inputText.lastIndexOf(System.lineSeparator()) > inputText.lastIndexOf('>'))
+			if (inputText.lastIndexOf(System.lineSeparator()) > inputText.lastIndexOf('>')) {
 				return;
+			}
 			highlightDefault(inputText);
-			highlightBasedOnLexer(inputText);
 			highlightBasedOnParser(inputText);
 			styledDocument.addUndoableEditListener(undoManager);
-		}
-
-		private void highlightBasedOnLexer(String inputText) throws BadLocationException {
-			int start = lastLineIndex(styledDocument) + GREETING.length();
-			String userInput = inputText.substring(start);
-			Map<String, Expression> context = getContext();
-			Lexer lexer = new Lexer();
-			lexer.lex(userInput);
-			List<Lexeme> lexemes = lexer.getResult();
-			List<Highlight> highlights = HighlightTraverser.highlight(lexemes);
-			for (int i = 0; i < highlights.size(); i++) {
-				Highlight highlight = highlights.get(i);
-				Lexeme lexeme = lexemes.get(i);
-				String style = highlight.style;
-				if (style.equals("variable")
-						&& !simplifyMode()
-						&& !context.containsKey(userInput.substring(
-						lexeme.start,
-						lexeme.start + lexeme.length))) {
-					style = "error";
-				}
-				styledDocument.setCharacterAttributes(
-						start + highlight.start, highlight.length,
-						styledDocument.getStyle(style), true);
-			}
 		}
 
 		private void highlightBasedOnParser(String inputText) throws BadLocationException {
 			int start = lastLineIndex(styledDocument) + GREETING.length();
 			String userInput = inputText.substring(start);
 			Map<String, Expression> context = getContext();
-			Tuple<Expression, Integer> parseTuple = buildAST(userInput);
-			Expression ast = parseTuple.fst;
-			int lastParsedSymbol = 0;
-			if (ast != null)
-			{
-				lastParsedSymbol = parseTuple.snd;
-				HighlightingVisitor highlightingVisitor = new HighlightingVisitor(context, !simplifyMode());
-				List<Highlight> highlights = highlightingVisitor.getHighlights();
-				for (Highlight highlight: highlights) {
-					styledDocument.setCharacterAttributes(
-							start + highlight.start, highlight.length,
-							styledDocument.getStyle(highlight.style), true);
+			Expression ast = buildAST(userInput);
+			HighlightingVisitor highlightingVisitor = new HighlightingVisitor(context, !simplifyMode());
+			ast.accept(highlightingVisitor);
+			List<Highlight> highlights = highlightingVisitor.getHighlights();
+			for (Highlight highlight : highlights) {
+				if (highlight.length == 0) {
+					continue;
 				}
+				styledDocument.setCharacterAttributes(
+						start + highlight.start, highlight.length,
+						styledDocument.getStyle(highlight.style), true);
 			}
-			highlightError(inputText, lastParsedSymbol);
-		}
-
-		private void highlightError(String inputText, int startingFrom) throws BadLocationException {
-			int start = lastLineIndex(styledDocument) + GREETING.length();
-			String userInput = inputText.substring(start);
-			styledDocument.setCharacterAttributes(
-					start + startingFrom,
-					userInput.length() - (startingFrom - start),
-					styledDocument.getStyle("error"), true);
 		}
 
 		private void highlightDefault(String inputText) throws BadLocationException {

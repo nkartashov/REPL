@@ -40,7 +40,12 @@ public abstract class EvaluatorBase implements ExpressionVisitor<Expression> {
 			double result = ((Number) left).number.doubleValue() + ((Number) right).number.doubleValue();
 			return new Number(result, left.start, left.length + right.length + 1);
 		} else {
-			return new Addition(left, right, left.start, left.length + right.length + 1);
+			return new Addition(
+					left,
+					right,
+					left.start,
+					left.length + right.length + 1,
+					addition.signPosition);
 		}
 	}
 
@@ -52,7 +57,12 @@ public abstract class EvaluatorBase implements ExpressionVisitor<Expression> {
 			double result = ((Number) left).number.doubleValue() - ((Number) right).number.doubleValue();
 			return new Number(result, left.start, left.length + right.length + 1);
 		} else {
-			return new Subtraction(left, right, left.start, left.length + right.length + 1);
+			return new Subtraction(
+					left,
+					right,
+					left.start,
+					left.length + right.length + 1,
+					subtraction.signPosition);
 		}
 	}
 
@@ -64,7 +74,12 @@ public abstract class EvaluatorBase implements ExpressionVisitor<Expression> {
 			double result = ((Number) left).number.doubleValue() * ((Number) right).number.doubleValue();
 			return new Number(result, left.start, left.length + right.length + 1);
 		} else {
-			return new Multiplication(left, right, left.start, left.length + right.length + 1);
+			return new Multiplication(
+					left,
+					right,
+					left.start,
+					left.length + right.length + 1,
+					multiplication.signPosition);
 		}
 	}
 
@@ -76,14 +91,19 @@ public abstract class EvaluatorBase implements ExpressionVisitor<Expression> {
 			double result = ((Number) left).number.doubleValue() / ((Number) right).number.doubleValue();
 			return new Number(result, left.start, left.length + right.length + 1);
 		} else {
-			return new Division(left, right, left.start, left.length + right.length + 1);
+			return new Division(
+					left,
+					right,
+					left.start,
+					left.length + right.length + 1,
+					division.signPosition);
 		}
 	}
 
 	@Override
 	public Expression visit(Assignment assignment) {
 		Expression expression = assignment.expression.accept(this);
-		context.put(assignment.variable, expression);
+		context.put(assignment.variable.name, expression);
 		return expression;
 	}
 }

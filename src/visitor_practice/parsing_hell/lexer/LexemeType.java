@@ -21,4 +21,5 @@ public enum LexemeType {
 	LEFT_BRACKET,
 	RIGHT_BRACKET,
 	WHITESPACE,
+	END
 }

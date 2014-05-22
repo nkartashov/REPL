@@ -14,8 +14,13 @@ import visitor_practice.visitors.ExpressionVisitor;
  */
 
 public class Division extends BinaryExpression {
-	public Division(Expression left, Expression right, int start, int length) {
-		super(left, right, start, length);
+	public Division(
+			Expression left,
+			Expression right,
+			int start,
+			int length,
+			int signPosition) {
+		super(left, right, start, length, signPosition);
 	}
 
 	@Override

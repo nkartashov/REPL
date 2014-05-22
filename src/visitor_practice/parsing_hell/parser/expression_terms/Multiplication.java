@@ -14,8 +14,13 @@ import visitor_practice.visitors.ExpressionVisitor;
  */
 
 public class Multiplication extends BinaryExpression {
-	public Multiplication(Expression left, Expression right, int start, int length) {
-		super(left, right, start, length);
+	public Multiplication(
+			Expression left,
+			Expression right,
+			int start,
+			int length,
+			int signPosition) {
+		super(left, right, start, length, signPosition);
 	}
 
 	@Override

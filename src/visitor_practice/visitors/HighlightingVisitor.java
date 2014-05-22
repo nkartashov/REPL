@@ -24,7 +24,14 @@ public class HighlightingVisitor implements ExpressionVisitor<Void> {
 
 	@Override
 	public Void visit(visitor_practice.parsing_hell.parser.expression_terms.Number number) {
-		highlights.add(new Highlight(number.start, number.length, "number"));
+		if (number.length == 0) {
+			return null;
+		}
+		if (!number.isValid()) {
+			addHighlight(number.start, number.length, "error");
+			return null;
+		}
+		addHighlight(number.start, number.length, "number");
 		return null;
 	}
 
@@ -50,17 +57,21 @@ public class HighlightingVisitor implements ExpressionVisitor<Void> {
 
 	@Override
 	public Void visit(Variable variable) {
+		if (!variable.isValid()) {
+			addHighlight(variable.start, variable.length, "error");
+			return null;
+		}
 		String style = "variable";
 		if (evaluation && !context.containsKey(variable.name)) {
 			style = "error";
 		}
-		highlights.add(new Highlight(variable.start, variable.length, style));
+		addHighlight(variable.start, variable.length, style);
 		return null;
 	}
 
 	@Override
 	public Void visit(Assignment assignment) {
-		highlights.add(new Highlight(assignment.start, assignment.variable.length(), "variable"));
+		assignment.variable.accept(this);
 		assignment.expression.accept(this);
 		return null;
 	}
@@ -71,10 +82,22 @@ public class HighlightingVisitor implements ExpressionVisitor<Void> {
 
 	private Void visitBinaryExpression(BinaryExpression expression)
 	{
+		if (!expression.isValid()) {
+			addHighlight(expression.left.start + expression.left.length + 1, 1, "error");
+			return null;
+		}
 		expression.left.accept(this);
-		highlights.add(new Highlight(expression.left.start + expression.left.length + 1, 1, "sign"));
+		String signStyle = "sign";
+		if (!expression.left.isValid() || !expression.right.isValid()) {
+			signStyle = "error";
+		}
+		addHighlight(expression.signPosition, 1, signStyle);
 		expression.right.accept(this);
 		return null;
+	}
+
+	private void addHighlight(int start, int length, String style) {
+		highlights.add(new Highlight(start, length, style));
 	}
 
 	private List<Highlight> highlights = new ArrayList<>();

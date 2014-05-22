@@ -14,10 +14,20 @@ package visitor_practice.parsing_hell.parser.expression_terms;
 public abstract class BinaryExpression extends Expression {
 	public final Expression left;
 	public final Expression right;
+	public final int signPosition;
 
-	protected BinaryExpression(Expression left, Expression right, int start, int length) {
+	protected BinaryExpression(
+			Expression left,
+			Expression right,
+			int start,
+			int length,
+			int signPosition) {
 		super(start, length);
 		this.left = left;
 		this.right = right;
+		this.signPosition = signPosition;
+		setHasBeenValid(left.getHasBeenInvalid() || right.getHasBeenInvalid());
+		setValidity(left.isValid() || right.isValid());
+		setDepth(Math.max(left.getDepth(), right.getDepth()));
 	}
 }
